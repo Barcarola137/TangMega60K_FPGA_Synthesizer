@@ -1,0 +1,91 @@
+// 文件名称：audio_pll_test.cst
+// 项目名称：高云杯 选题二 - 基于FPGA的实时多音色合成电子乐器引擎
+// 队伍名称：汪汪队
+// 硬件平台：Sipeed Tang Mega 60K (基于高云 GW5AT-LV60 FPGA)
+// 文件描述：系统物理层引脚分配与时序约束。
+//           严格匹配板卡原理图，统一采用 LVCMOS33 (3.3V) 电平标准，
+//           针对音频高速总线、矩阵扫描总线及外设IO进行了规范化的物理约束。
+
+
+// 1. 核心时钟域 (Clock Domain)
+// 说明：采用板载 50MHz 有源晶振作为系统全局主时钟。
+
+IO_LOC "sys_clk" V22;
+IO_PORT "sys_clk" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;
+
+
+
+// 2. 高保真音频输出总线 (连接板载 PT8211-S I2S DAC 及功放)
+// 说明：
+//   - BCK(位时钟)、WS(声道帧时钟)、DIN(串行音频数据) 严格遵循 I2S 物理层规范。
+//   - DRIVE=8 提供适中的驱动能力，减少高速信号的过冲与振铃。
+//   - PA_EN (功放使能)：原理图设计为低电平有效，代码底层已做逻辑处理。
+
+IO_LOC "hp_bck" Y17;                       
+IO_PORT "hp_bck" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+
+IO_LOC "hp_ws" AB17;                       
+IO_PORT "hp_ws" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+
+IO_LOC "hp_din" AA16;                      
+IO_PORT "hp_din" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+
+IO_LOC "pa_en" AB16;                       
+IO_PORT "pa_en" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+
+
+
+// 3. 4x4 多维交互矩阵键盘接口 (接 PMOD1 接口)
+// 说明：
+//   - 行线 [0:3] 作为输出（扫描驱动源）。
+//   - 列线 [4:7] 作为输入，必须开启内部上拉 (PULL_MODE=UP)。
+//   - 硬件防浮空设计：利用 FPGA 内部上拉电阻，省去外部硬件上拉，配合代码的
+//     "拉低扫描法"，按键按下时列线被拉低，松开时被内部上拉至 3.3V，确保逻辑稳定。
+
+// --- 行线 (输出扫描信号) ---
+IO_LOC "key_io[0]" Y21;   IO_PORT "key_io[0]" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;  // 行1
+IO_LOC "key_io[1]" Y22;   IO_PORT "key_io[1]" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;  // 行2
+IO_LOC "key_io[2]" AB21;  IO_PORT "key_io[2]" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;  // 行3
+IO_LOC "key_io[3]" AB22;  IO_PORT "key_io[3]" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;  // 行4
+
+// --- 列线 (输入，开启内部上拉) ---
+IO_LOC "key_io[4]" AA19;  IO_PORT "key_io[4]" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;    // 列1
+IO_LOC "key_io[5]" AB20;  IO_PORT "key_io[5]" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;    // 列2
+IO_LOC "key_io[6]" AA20;  IO_PORT "key_io[6]" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;    // 列3
+IO_LOC "key_io[7]" AA21;  IO_PORT "key_io[7]" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;    // 列4
+
+
+
+// 4. 8路硬件可视化指示灯 (接 PMOD0 J9 接口)
+// 说明：用于实时展示当前最高音符的频率柱状图或节拍器状态。
+// 注意：T18/R18/U21 等引脚在 60K 芯片上属于配置专用引脚 (Dual-Purpose Pin)。
+//       在 Gowin IDE 的 Place & Route 选项中，已勾选 "Use CPU as regular IO"，
+//       将配置引脚复用为普通用户 IO，以扩展可视化维度。
+
+IO_LOC "led_o[0]" T18;   IO_PORT "led_o[0]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "led_o[1]" R18;   IO_PORT "led_o[1]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "led_o[2]" R17;   IO_PORT "led_o[2]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "led_o[3]" P16;   IO_PORT "led_o[3]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "led_o[4]" U21;   IO_PORT "led_o[4]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "led_o[5]" T21;   IO_PORT "led_o[5]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "led_o[6]" R19;   IO_PORT "led_o[6]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "led_o[7]" P19;   IO_PORT "led_o[7]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+
+
+
+// 5. WS2812 幻彩灯珠数据线 (单总线协议)
+// 说明：由 FPGA 内部纯硬件逻辑生成精确的 0.8us/0.4us 占空比时序，实现
+//       随着演奏音名实时变色，完成赛题要求的“硬件级可视化反馈”。
+
+IO_LOC "WS2812" J16;
+IO_PORT "WS2812" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+
+
+
+// 6. 实时延迟示波器测试引脚 (赛题硬性指标：≤10ms 验证点)
+// 说明：该引脚直接绑定到系统发声的 Gate 信号。任一发声通道激活即拉高。
+//       供评委在答辩现场使用示波器，直观测量从按键按下到该引脚电平翻转的
+//       物理极低延迟，自证纯 HDL 流水线架构的实时性优势。
+
+IO_LOC "debug_pin" E13;
+IO_PORT "debug_pin" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
